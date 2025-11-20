@@ -1,5 +1,5 @@
 --------------------------------------------------------
--- 1. ROLES / USUARIOS / ADMIN
+-- 1. ROLES / USUARIOS / ADMIN-
 --------------------------------------------------------
 CREATE TABLE Rol (
     id_rol       NUMBER(10)      PRIMARY KEY,
@@ -865,5 +865,193 @@ BEGIN
     WHERE  id_grupo   = p_id_grupo;
 END;
 /
+---------------------------------------------------------
+-- TRIGGERS
+---------------------------------------------------------
+--1
+ALTER TABLE Usuario ADD fecha_creacion DATE;
 
+CREATE OR REPLACE TRIGGER trg_usuario_fecha_creacion
+BEFORE INSERT ON Usuario
+FOR EACH ROW
+BEGIN
+    :NEW.fecha_creacion := SYSDATE;
+END;
+/
+
+2--
+CREATE OR REPLACE TRIGGER trg_curso_validar_creditos
+BEFORE INSERT OR UPDATE ON Curso
+FOR EACH ROW
+BEGIN
+    IF :NEW.creditos <= 0 THEN
+        RAISE_APPLICATION_ERROR(
+            -20001,
+            'Los créditos deben ser mayores a cero.'
+        );
+    END IF;
+END;
+/
+
+--3
+CREATE TABLE Historial_Nombre_Estudiante (
+    id_log NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_estudiante NUMBER,
+    nombre_anterior VARCHAR2(100),
+    nombre_nuevo VARCHAR2(100),
+    fecha_cambio DATE
+);
+
+CREATE OR REPLACE TRIGGER trg_log_cambio_nombre
+BEFORE UPDATE ON Estudiante
+FOR EACH ROW
+WHEN (OLD.nombre <> NEW.nombre)
+BEGIN
+    INSERT INTO Historial_Nombre_Estudiante(
+        id_estudiante,
+        nombre_anterior,
+        nombre_nuevo,
+        fecha_cambio
+    )
+    VALUES(
+        :OLD.id_estudiante,
+        :OLD.nombre,
+        :NEW.nombre,
+        SYSDATE
+    );
+END;
+/
+---------------------------------------------------------
+-- CURSORES
+---------------------------------------------------------
+------------------------------------------------------------
+--1. Cursor: Listar todos los usuarios
+------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE cur_listar_usuarios IS
+    CURSOR c_users IS
+        SELECT nombreUsuario FROM Usuario;
+
+BEGIN
+    FOR r IN c_users LOOP
+        DBMS_OUTPUT.PUT_LINE('Usuario: ' || r.nombreUsuario);
+    END LOOP;
+END;
+/
+------------------------------------------------------------
+
+
+------------------------------------------------------------
+--2. Cursor: Listar estudiantes por carrera
+------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE cur_estudiantes_por_carrera IS
+    CURSOR c_est IS
+        SELECT e.nombre, c.nombre AS carrera
+        FROM Estudiante e
+        JOIN Carrera c ON e.id_carrera = c.id_carrera;
+
+BEGIN
+    FOR r IN c_est LOOP
+        DBMS_OUTPUT.PUT_LINE(r.nombre || ' - ' || r.carrera);
+    END LOOP;
+END;
+/
+------------------------------------------------------------
+
+
+------------------------------------------------------------
+--3. Cursor: Cursos con más de 3 créditos
+------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE cur_cursos_creditos IS
+    CURSOR c_cursos IS
+        SELECT nombreCurso, creditos
+        FROM Curso
+        WHERE creditos > 3;
+
+BEGIN
+    FOR r IN c_cursos LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            r.nombreCurso || ': ' || r.creditos || ' créditos'
+        );
+    END LOOP;
+END;
+/
+------------------------------------------------------------
+
+
+------------------------------------------------------------
+--4. Cursor: Listar facultades
+------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE cur_facultades IS
+    CURSOR c_fac IS
+        SELECT nombre FROM Facultad;
+
+BEGIN
+    FOR r IN c_fac LOOP
+        DBMS_OUTPUT.PUT_LINE('Facultad: ' || r.nombre);
+    END LOOP;
+END;
+/
+------------------------------------------------------------
+
+
+------------------------------------------------------------
+--5. Cursor: Contar cursos por facultad
+------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE cur_contar_cursos IS
+    CURSOR c_cont IS
+        SELECT f.nombre AS facultad,
+               COUNT(c.id_curso) AS cantidad
+        FROM Facultad f
+        LEFT JOIN Curso c ON f.id_facultad = c.id_facultad
+        GROUP BY f.nombre;
+
+BEGIN
+    FOR r IN c_cont LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            r.facultad || ': ' || r.cantidad || ' cursos'
+        );
+    END LOOP;
+END;
+/
+------------------------------------------------------------
+
+
+------------------------------------------------------------
+--6. Cursor: Administradores y su usuario
+------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE cur_admins IS
+    CURSOR c_admin IS
+        SELECT a.cargo, u.nombreUsuario
+        FROM Administrador a
+        JOIN Usuario u ON a.id_usuario = u.id_usuario;
+
+BEGIN
+    FOR r IN c_admin LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            r.nombreUsuario || ' - ' || r.cargo
+        );
+    END LOOP;
+END;
+/
+------------------------------------------------------------
+
+
+------------------------------------------------------------
+--7. Cursor: Planes de estudio por carrera
+------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE cur_planes IS
+    CURSOR c_planes IS
+        SELECT p.nombre AS plan, c.nombre AS carrera
+        FROM Plan_Estudio p
+        JOIN Carrera c ON p.id_carrera = c.id_carrera;
+
+BEGIN
+    FOR r IN c_planes LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            r.plan || ' (Carrera: ' || r.carrera || ')'
+        );
+    END LOOP;
+END;
+/
+------------------------------------------------------------
 
