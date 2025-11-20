@@ -1,0 +1,702 @@
+--------------------------------------------------------
+-- 1. ROLES / USUARIOS / ADMIN
+--------------------------------------------------------
+CREATE TABLE Rol (
+    id_rol       NUMBER(10)      PRIMARY KEY,
+    nombreRol    VARCHAR2(50)    NOT NULL,
+    descripcion  VARCHAR2(255)
+);
+
+CREATE TABLE Usuario (
+    id_usuario     NUMBER(10)      PRIMARY KEY,
+    nombreUsuario  VARCHAR2(50)    NOT NULL,
+    correo         VARCHAR2(100)   NOT NULL,
+    contrasena     VARCHAR2(100)   NOT NULL,
+    id_rol         NUMBER(10)      NOT NULL,
+    CONSTRAINT fk_usuario_rol
+        FOREIGN KEY (id_rol) REFERENCES Rol(id_rol)
+);
+
+CREATE TABLE Administrador (
+    id_admin     NUMBER(10)      PRIMARY KEY,
+    cargo        VARCHAR2(50)    NOT NULL,
+    departamento VARCHAR2(100),
+    id_usuario   NUMBER(10)      NOT NULL,
+    CONSTRAINT fk_admin_usuario
+        FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario)
+);
+
+--------------------------------------------------------
+-- 2. FACULTAD / CARRERA / PLAN_ESTUDIO / CURSOS
+--------------------------------------------------------
+CREATE TABLE Facultad (
+    id_facultad   NUMBER(10)      PRIMARY KEY,
+    nombre        VARCHAR2(100)   NOT NULL,
+    descripcion   VARCHAR2(255)
+);
+
+CREATE TABLE Carrera (
+    id_carrera  NUMBER(10)      PRIMARY KEY,
+    nombre      VARCHAR2(100)   NOT NULL,
+    id_facultad NUMBER(10)      NOT NULL,
+    CONSTRAINT fk_carrera_facultad
+        FOREIGN KEY (id_facultad) REFERENCES Facultad(id_facultad)
+);
+
+CREATE TABLE Plan_Estudio (
+    id_plan      NUMBER(10)      PRIMARY KEY,
+    nombre       VARCHAR2(100)   NOT NULL,
+    ano_vigencia NUMBER(4),
+    id_carrera   NUMBER(10)      NOT NULL,
+    CONSTRAINT fk_plan_carrera
+        FOREIGN KEY (id_carrera) REFERENCES Carrera(id_carrera)
+);
+
+CREATE TABLE Curso (
+    id_curso        NUMBER(10)      PRIMARY KEY,
+    id_facultad     NUMBER(10)      NOT NULL,
+    creditos        NUMBER(3),
+    nombreCurso     VARCHAR2(100)   NOT NULL,
+    descripcionCurso VARCHAR2(255),
+    CONSTRAINT fk_curso_facultad
+        FOREIGN KEY (id_facultad) REFERENCES Facultad(id_facultad)
+);
+
+CREATE TABLE Curso_Libre (
+    id_curso_libre  NUMBER(10)      PRIMARY KEY,
+    nombre          VARCHAR2(100)   NOT NULL,
+    descripcion     VARCHAR2(255),
+    fecha           DATE,
+    duracion        NUMBER(4),          -- horas, días, etc.
+    id_facultad     NUMBER(10)      NOT NULL,
+    CONSTRAINT fk_cursolibre_facultad
+        FOREIGN KEY (id_facultad) REFERENCES Facultad(id_facultad)
+);
+
+CREATE TABLE Evento (
+    id_evento   NUMBER(10)      PRIMARY KEY,
+    nombre      VARCHAR2(100)   NOT NULL,
+    descripcion VARCHAR2(255),
+    fecha       DATE,
+    id_facultad NUMBER(10)      NOT NULL,
+    CONSTRAINT fk_evento_facultad
+        FOREIGN KEY (id_facultad) REFERENCES Facultad(id_facultad)
+);
+
+--------------------------------------------------------
+-- 3. EDIFICIO / AULA / HORARIO / PERIODO
+--------------------------------------------------------
+CREATE TABLE Edificio (
+    id_edificio NUMBER(10)      PRIMARY KEY,
+    nombre      VARCHAR2(100)   NOT NULL,
+    sede        VARCHAR2(100),
+    ubicacion   VARCHAR2(255)
+);
+
+CREATE TABLE Aula (
+    id_aula      NUMBER(10)      PRIMARY KEY,
+    numero_aula  VARCHAR2(20)    NOT NULL,
+    capacidad    NUMBER(4),
+    modalidad    VARCHAR2(20),   -- presencial, virtual, mixto, etc.
+    id_edificio  NUMBER(10)      NOT NULL,
+    CONSTRAINT fk_aula_edificio
+        FOREIGN KEY (id_edificio) REFERENCES Edificio(id_edificio)
+);
+
+CREATE TABLE Horario (
+    id_horario  NUMBER(10)      PRIMARY KEY,
+    dia_semana  VARCHAR2(15)    NOT NULL,
+    hora_inicio DATE            NOT NULL,
+    hora_fin    DATE            NOT NULL
+);
+
+CREATE TABLE Periodo (
+    id_periodo    NUMBER(10)      PRIMARY KEY,
+    anio          NUMBER(4)       NOT NULL,
+    cuatrimestre  NUMBER(1)       NOT NULL,
+    fecha_inicio  DATE,
+    fecha_fin     DATE
+);
+
+
+--------------------------------------------------------
+-- 4. PROFESOR
+--------------------------------------------------------
+CREATE TABLE Profesor (
+    id_profesor      NUMBER(10)      PRIMARY KEY,
+    id_usuario       NUMBER(10)      NOT NULL,
+    especialidad     VARCHAR2(100),
+    grado_academico  VARCHAR2(50),
+    CONSTRAINT fk_profesor_usuario
+        FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario)
+);
+
+
+--------------------------------------------------------
+-- 5. ESTUDIANTE / BECA / PAGO
+--------------------------------------------------------
+CREATE TABLE Estudiante (
+    id_estudiante NUMBER(10)      PRIMARY KEY,
+    nombre        VARCHAR2(100)   NOT NULL,
+    apellido      VARCHAR2(100)   NOT NULL,
+    fechaIngreso  DATE,
+    id_usuario    NUMBER(10)      NOT NULL,
+    id_carrera    NUMBER(10)      NOT NULL,
+    id_beca       NUMBER(10),     -- FK se agrega luego por la relación circular
+    CONSTRAINT fk_estudiante_usuario
+        FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario),
+    CONSTRAINT fk_estudiante_carrera
+        FOREIGN KEY (id_carrera) REFERENCES Carrera(id_carrera)
+);
+
+CREATE TABLE Beca (
+    id_beca      NUMBER(10)      PRIMARY KEY,
+    id_estudiante NUMBER(10)     NOT NULL,
+    tipo         VARCHAR2(50)    NOT NULL,
+    porcentaje   NUMBER(5,2),
+    descripcion  VARCHAR2(255),
+    CONSTRAINT fk_beca_estudiante
+        FOREIGN KEY (id_estudiante) REFERENCES Estudiante(id_estudiante)
+);
+
+CREATE TABLE Pago (
+    id_pago        NUMBER(10)      PRIMARY KEY,
+    monto_pagado   NUMBER(10,2)    NOT NULL,
+    fecha_pago     DATE            NOT NULL,
+    id_estudiante  NUMBER(10)      NOT NULL,
+    id_beca        NUMBER(10),
+    CONSTRAINT fk_pago_estudiante
+        FOREIGN KEY (id_estudiante) REFERENCES Estudiante(id_estudiante),
+    CONSTRAINT fk_pago_beca
+        FOREIGN KEY (id_beca) REFERENCES Beca(id_beca)
+);
+
+--------------------------------------------------------
+-- 6. GRUPO / MATRICULA / ASISTENCIA / NOTA
+--------------------------------------------------------
+CREATE TABLE Grupo (
+    id_grupo      NUMBER(10)      PRIMARY KEY,
+    numeroGrupo   VARCHAR2(20)    NOT NULL,
+    fecha         DATE,
+    id_curso      NUMBER(10)      NOT NULL,
+    id_profesor   NUMBER(10)      NOT NULL,
+    id_periodo    NUMBER(10)      NOT NULL,
+    id_horario    NUMBER(10)      NOT NULL,
+    id_aula       NUMBER(10)      NOT NULL,
+    CONSTRAINT fk_grupo_curso
+        FOREIGN KEY (id_curso) REFERENCES Curso(id_curso),
+    CONSTRAINT fk_grupo_profesor
+        FOREIGN KEY (id_profesor) REFERENCES Profesor(id_profesor),
+    CONSTRAINT fk_grupo_periodo
+        FOREIGN KEY (id_periodo) REFERENCES Periodo(id_periodo),
+    CONSTRAINT fk_grupo_horario
+        FOREIGN KEY (id_horario) REFERENCES Horario(id_horario),
+    CONSTRAINT fk_grupo_aula
+        FOREIGN KEY (id_aula) REFERENCES Aula(id_aula)
+);
+
+CREATE TABLE Matricula (
+    id_matricula    NUMBER(10)      PRIMARY KEY,
+    id_grupo        NUMBER(10)      NOT NULL,
+    id_estudiante   NUMBER(10)      NOT NULL,
+    fecha_matricula DATE,
+    CONSTRAINT fk_matricula_grupo
+        FOREIGN KEY (id_grupo) REFERENCES Grupo(id_grupo),
+    CONSTRAINT fk_matricula_estudiante
+        FOREIGN KEY (id_estudiante) REFERENCES Estudiante(id_estudiante)
+);
+
+CREATE TABLE Asistencia (
+    id_asistencia  NUMBER(10)      PRIMARY KEY,
+    id_estudiante  NUMBER(10)      NOT NULL,
+    id_grupo       NUMBER(10)      NOT NULL,
+    fecha          DATE            NOT NULL,
+    estado         VARCHAR2(20),
+    CONSTRAINT fk_asistencia_estudiante
+        FOREIGN KEY (id_estudiante) REFERENCES Estudiante(id_estudiante),
+    CONSTRAINT fk_asistencia_grupo
+        FOREIGN KEY (id_grupo) REFERENCES Grupo(id_grupo)
+);
+
+CREATE TABLE Nota (
+    id_nota       NUMBER(10)      PRIMARY KEY,
+    nota_final    NUMBER(5,2),
+    id_estudiante NUMBER(10)      NOT NULL,
+    id_grupo      NUMBER(10)      NOT NULL,
+    CONSTRAINT fk_nota_estudiante
+        FOREIGN KEY (id_estudiante) REFERENCES Estudiante(id_estudiante),
+    CONSTRAINT fk_nota_grupo
+        FOREIGN KEY (id_grupo) REFERENCES Grupo(id_grupo)
+);
+
+--------------------------------------------------------
+-- 7. BIBLIOTECA / LIBRO / PRESTAMO_LIBRO / PLAN_CURSO
+--------------------------------------------------------
+CREATE TABLE Biblioteca (
+    id_biblioteca NUMBER(10)      PRIMARY KEY,
+    id_estudiante NUMBER(10),          -- según diagrama, referencia a estudiante
+    nombre        VARCHAR2(100)   NOT NULL,
+    id_facultad   NUMBER(10)      NOT NULL,
+    CONSTRAINT fk_biblioteca_estudiante
+        FOREIGN KEY (id_estudiante) REFERENCES Estudiante(id_estudiante),
+    CONSTRAINT fk_biblioteca_facultad
+        FOREIGN KEY (id_facultad) REFERENCES Facultad(id_facultad)
+);
+
+CREATE TABLE Libro (
+    id_libro      NUMBER(10)      PRIMARY KEY,
+    titulo        VARCHAR2(150)   NOT NULL,
+    autor         VARCHAR2(100),
+    id_biblioteca NUMBER(10)      NOT NULL,
+    CONSTRAINT fk_libro_biblioteca
+        FOREIGN KEY (id_biblioteca) REFERENCES Biblioteca(id_biblioteca)
+);
+
+CREATE TABLE PrestamoLibro (
+    id_prestamo      NUMBER(10)      PRIMARY KEY,
+    id_estudiante    NUMBER(10)      NOT NULL,
+    id_libro         NUMBER(10)      NOT NULL,
+    fecha_prestamo   DATE            NOT NULL,
+    fecha_devolucion DATE,
+    estado           VARCHAR2(20),
+    CONSTRAINT fk_prestamo_estudiante
+        FOREIGN KEY (id_estudiante) REFERENCES Estudiante(id_estudiante),
+    CONSTRAINT fk_prestamo_libro
+        FOREIGN KEY (id_libro) REFERENCES Libro(id_libro)
+);
+
+CREATE TABLE Plan_Curso (
+    id_plan_curso NUMBER(10)      PRIMARY KEY,
+    tipo          VARCHAR2(50)    NOT NULL,
+    id_curso      NUMBER(10)      NOT NULL,
+    CONSTRAINT fk_plancurso_curso
+        FOREIGN KEY (id_curso) REFERENCES Curso(id_curso)
+);
+
+--------------------------------------------------------
+-- 8. FK PENDIENTE POR RELACIÓN CIRCULAR (ESTUDIANTE - BECA)
+--------------------------------------------------------
+ALTER TABLE Estudiante
+    ADD CONSTRAINT fk_estudiante_beca
+        FOREIGN KEY (id_beca) REFERENCES Beca(id_beca);
+        
+        
+        
+
+--------------------------------------------------------
+-- 1. ROL / USUARIO / ADMINISTRADOR
+--------------------------------------------------------
+INSERT INTO Rol (id_rol, nombreRol, descripcion) VALUES (1, 'Administrador', 'Gestión del sistema');
+INSERT INTO Rol (id_rol, nombreRol, descripcion) VALUES (2, 'Profesor', 'Usuario docente');
+INSERT INTO Rol (id_rol, nombreRol, descripcion) VALUES (3, 'Estudiante', 'Usuario estudiante');
+
+INSERT INTO Usuario (id_usuario, nombreUsuario, correo, contrasena, id_rol) VALUES
+(1, 'admin1', 'admin1@uni.cr', 'admin123', 1);
+INSERT INTO Usuario VALUES
+(2, 'prof_jperez', 'jperez@uni.cr', 'prof123', 2);
+INSERT INTO Usuario VALUES
+(3, 'prof_mlopez', 'mlopez@uni.cr', 'prof123', 2);
+INSERT INTO Usuario VALUES
+(4, 'prof_cramirez', 'cramirez@uni.cr', 'prof123', 2);
+INSERT INTO Usuario VALUES
+(5, 'est_ana', 'ana@uni.cr', 'est123', 3);
+INSERT INTO Usuario VALUES
+(6, 'est_carlos', 'carlos@uni.cr', 'est123', 3);
+INSERT INTO Usuario VALUES
+(7, 'est_luisa', 'luisa@uni.cr', 'est123', 3);
+INSERT INTO Usuario VALUES
+(8, 'est_pedro', 'pedro@uni.cr', 'est123', 3);
+INSERT INTO Usuario VALUES
+(9, 'est_maria', 'maria@uni.cr', 'est123', 3);
+INSERT INTO Usuario VALUES
+(10, 'est_jose', 'jose@uni.cr', 'est123', 3);
+
+INSERT INTO Administrador (id_admin, cargo, departamento, id_usuario) VALUES
+(1, 'Director TI', 'Tecnologías de Información', 1);
+
+--------------------------------------------------------
+-- 2. FACULTAD / CARRERA / PLAN_ESTUDIO / CURSO / CURSO_LIBRE / EVENTO
+--------------------------------------------------------
+INSERT INTO Facultad (id_facultad, nombre, descripcion) VALUES
+(1, 'Ingeniería', 'Facultad de Ingeniería');
+INSERT INTO Facultad VALUES
+(2, 'Ciencias Sociales', 'Facultad de Ciencias Sociales');
+INSERT INTO Facultad VALUES
+(3, 'Artes y Diseño', 'Facultad de Artes y Diseño');
+
+INSERT INTO Carrera (id_carrera, nombre, id_facultad) VALUES
+(1, 'Ingeniería en Sistemas', 1);
+INSERT INTO Carrera VALUES
+(2, 'Ingeniería Industrial', 1);
+INSERT INTO Carrera VALUES
+(3, 'Psicología', 2);
+INSERT INTO Carrera VALUES
+(4, 'Diseño Gráfico', 3);
+
+INSERT INTO Plan_Estudio (id_plan, nombre, ano_vigencia, id_carrera) VALUES
+(1, 'Plan Ing. Sistemas 2024', 2024, 1);
+INSERT INTO Plan_Estudio VALUES
+(2, 'Plan Ing. Industrial 2024', 2024, 2);
+INSERT INTO Plan_Estudio VALUES
+(3, 'Plan Psicología 2024', 2024, 3);
+INSERT INTO Plan_Estudio VALUES
+(4, 'Plan Diseño Gráfico 2024', 2024, 4);
+
+INSERT INTO Curso (id_curso, id_facultad, creditos, nombreCurso, descripcionCurso) VALUES
+(1, 1, 4, 'Bases de Datos I', 'Fundamentos de bases de datos relacionales');
+INSERT INTO Curso VALUES
+(2, 1, 4, 'Programación I', 'Introducción a la programación');
+INSERT INTO Curso VALUES
+(3, 1, 3, 'Redes de Computadoras', 'Conceptos básicos de redes');
+INSERT INTO Curso VALUES
+(4, 2, 3, 'Estadística General', 'Herramientas estadísticas');
+INSERT INTO Curso VALUES
+(5, 2, 4, 'Introducción a la Psicología', 'Fundamentos de psicología');
+INSERT INTO Curso VALUES
+(6, 3, 3, 'Dibujo Digital', 'Herramientas de ilustración digital');
+
+INSERT INTO Curso_Libre (id_curso_libre, nombre, descripcion, fecha, duracion, id_facultad) VALUES
+(1, 'Taller de Python', 'Curso libre de programación en Python',
+ DATE '2025-03-01', 20, 1);
+INSERT INTO Curso_Libre VALUES
+(2, 'Fotografía Digital', 'Conceptos básicos de fotografía',
+ DATE '2025-04-10', 16, 3);
+INSERT INTO Curso_Libre VALUES
+(3, 'Oratoria y Liderazgo', 'Mejora de habilidades de comunicación',
+ DATE '2025-05-05', 12, 2);
+
+INSERT INTO Evento (id_evento, nombre, descripcion, fecha, id_facultad) VALUES
+(1, 'Feria de Empleo', 'Empresas invitadas para reclutamiento',
+ DATE '2025-06-15', 1);
+INSERT INTO Evento VALUES
+(2, 'Semana de la Salud', 'Charlas sobre salud mental y física',
+ DATE '2025-07-10', 2);
+INSERT INTO Evento VALUES
+(3, 'ExpoArte Universitaria', 'Exposición de obras estudiantiles',
+ DATE '2025-08-20', 3);
+
+--------------------------------------------------------
+-- 3. EDIFICIO / AULA / HORARIO / PERIODO
+--------------------------------------------------------
+INSERT INTO Edificio (id_edificio, nombre, sede, ubicacion) VALUES
+(1, 'Edificio A', 'Sede Central', 'Entrada principal');
+INSERT INTO Edificio VALUES
+(2, 'Edificio B', 'Sede Central', 'Zona norte');
+INSERT INTO Edificio VALUES
+(3, 'Edificio C', 'Sede Central', 'Zona sur');
+
+INSERT INTO Aula (id_aula, numero_aula, capacidad, modalidad, id_edificio) VALUES
+(1, 'A-101', 40, 'Presencial', 1);
+INSERT INTO Aula VALUES
+(2, 'A-102', 30, 'Presencial', 1);
+INSERT INTO Aula VALUES
+(3, 'B-201', 35, 'Mixto', 2);
+INSERT INTO Aula VALUES
+(4, 'Virtual-1', 100, 'Virtual', 3);
+INSERT INTO Aula VALUES
+(5, 'C-101', 25, 'Presencial', 3);
+
+INSERT INTO Horario (id_horario, dia_semana, hora_inicio, hora_fin) VALUES
+(1, 'Lunes',
+ TO_DATE('2025-01-01 08:00','YYYY-MM-DD HH24:MI'),
+ TO_DATE('2025-01-01 10:00','YYYY-MM-DD HH24:MI'));
+INSERT INTO Horario VALUES
+(2, 'Martes',
+ TO_DATE('2025-01-01 10:00','YYYY-MM-DD HH24:MI'),
+ TO_DATE('2025-01-01 12:00','YYYY-MM-DD HH24:MI'));
+INSERT INTO Horario VALUES
+(3, 'Miércoles',
+ TO_DATE('2025-01-01 14:00','YYYY-MM-DD HH24:MI'),
+ TO_DATE('2025-01-01 16:00','YYYY-MM-DD HH24:MI'));
+INSERT INTO Horario VALUES
+(4, 'Jueves',
+ TO_DATE('2025-01-01 18:00','YYYY-MM-DD HH24:MI'),
+ TO_DATE('2025-01-01 20:00','YYYY-MM-DD HH24:MI'));
+
+INSERT INTO Periodo (id_periodo, anio, cuatrimestre, fecha_inicio, fecha_fin) VALUES
+(1, 2025, 1, DATE '2025-01-15', DATE '2025-05-15');
+INSERT INTO Periodo VALUES
+(2, 2025, 2, DATE '2025-05-20', DATE '2025-09-20');
+
+--------------------------------------------------------
+-- 4. PROFESOR
+--------------------------------------------------------
+INSERT INTO Profesor (id_profesor, id_usuario, especialidad, grado_academico) VALUES
+(1, 2, 'Bases de Datos', 'MSc. Computación');
+INSERT INTO Profesor VALUES
+(2, 3, 'Estadística y Métodos', 'MSc. Estadística');
+INSERT INTO Profesor VALUES
+(3, 4, 'Diseño Digital', 'Lic. Diseño Gráfico');
+
+--------------------------------------------------------
+-- 5. ESTUDIANTE / BECA / PAGO
+--------------------------------------------------------
+-- Estudiantes (id_beca se llena luego con UPDATE)
+INSERT INTO Estudiante (id_estudiante, nombre, apellido, fechaIngreso,
+                        id_usuario, id_carrera, id_beca)
+VALUES (1, 'Ana', 'Ramírez', DATE '2024-02-10', 5, 1, NULL);
+
+INSERT INTO Estudiante VALUES
+(2, 'Carlos', 'Soto', DATE '2024-02-10', 6, 1, NULL);
+INSERT INTO Estudiante VALUES
+(3, 'Luisa', 'Vargas', DATE '2023-02-10', 7, 3, NULL);
+INSERT INTO Estudiante VALUES
+(4, 'Pedro', 'Gómez', DATE '2023-02-10', 8, 2, NULL);
+INSERT INTO Estudiante VALUES
+(5, 'María', 'Castro', DATE '2022-02-10', 9, 4, NULL);
+INSERT INTO Estudiante VALUES
+(6, 'José', 'Hernández', DATE '2022-02-10', 10, 1, NULL);
+
+-- Becas (relación a Estudiante)
+INSERT INTO Beca (id_beca, id_estudiante, tipo, porcentaje, descripcion) VALUES
+(1, 1, 'Académica', 50, 'Beca por rendimiento académico');
+INSERT INTO Beca VALUES
+(2, 3, 'Socioeconómica', 75, 'Beca por condición socioeconómica');
+
+-- Actualizamos Estudiante para enlazar la beca
+UPDATE Estudiante SET id_beca = 1 WHERE id_estudiante = 1;
+UPDATE Estudiante SET id_beca = 2 WHERE id_estudiante = 3;
+
+-- Pagos
+INSERT INTO Pago (id_pago, monto_pagado, fecha_pago, id_estudiante, id_beca) VALUES
+(1, 250000.00, DATE '2025-02-01', 1, 1);
+INSERT INTO Pago VALUES
+(2, 300000.00, DATE '2025-02-05', 2, NULL);
+INSERT INTO Pago VALUES
+(3, 200000.00, DATE '2025-02-10', 3, 2);
+INSERT INTO Pago VALUES
+(4, 280000.00, DATE '2025-02-12', 4, NULL);
+
+--------------------------------------------------------
+-- 6. GRUPO / MATRICULA / ASISTENCIA / NOTA
+--------------------------------------------------------
+INSERT INTO Grupo (id_grupo, numeroGrupo, fecha, id_curso, id_profesor,
+                   id_periodo, id_horario, id_aula)
+VALUES (1, 'BD1-01', DATE '2025-02-01', 1, 1, 1, 1, 1);
+
+INSERT INTO Grupo VALUES
+(2, 'PROG1-01', DATE '2025-02-01', 2, 1, 1, 2, 2);
+INSERT INTO Grupo VALUES
+(3, 'EST-01', DATE '2025-05-25', 4, 2, 2, 3, 3);
+INSERT INTO Grupo VALUES
+(4, 'DIBDIG-01', DATE '2025-05-25', 6, 3, 2, 4, 5);
+
+-- Matrículas
+INSERT INTO Matricula (id_matricula, id_grupo, id_estudiante, fecha_matricula) VALUES
+(1, 1, 1, DATE '2025-01-20');
+INSERT INTO Matricula VALUES
+(2, 1, 2, DATE '2025-01-21');
+INSERT INTO Matricula VALUES
+(3, 2, 1, DATE '2025-01-22');
+INSERT INTO Matricula VALUES
+(4, 2, 6, DATE '2025-01-22');
+INSERT INTO Matricula VALUES
+(5, 3, 3, DATE '2025-05-30');
+INSERT INTO Matricula VALUES
+(6, 4, 5, DATE '2025-05-30');
+
+-- Asistencias (ejemplo simple)
+INSERT INTO Asistencia (id_asistencia, id_estudiante, id_grupo, fecha, estado) VALUES
+(1, 1, 1, DATE '2025-02-10', 'Presente');
+INSERT INTO Asistencia VALUES
+(2, 2, 1, DATE '2025-02-10', 'Ausente');
+INSERT INTO Asistencia VALUES
+(3, 1, 2, DATE '2025-02-11', 'Presente');
+INSERT INTO Asistencia VALUES
+(4, 6, 2, DATE '2025-02-11', 'Presente');
+INSERT INTO Asistencia VALUES
+(5, 3, 3, DATE '2025-06-05', 'Presente');
+INSERT INTO Asistencia VALUES
+(6, 5, 4, DATE '2025-06-06', 'Presente');
+
+-- Notas
+INSERT INTO Nota (id_nota, nota_final, id_estudiante, id_grupo) VALUES
+(1, 90, 1, 1);
+INSERT INTO Nota VALUES
+(2, 75, 2, 1);
+INSERT INTO Nota VALUES
+(3, 88, 1, 2);
+INSERT INTO Nota VALUES
+(4, 92, 6, 2);
+INSERT INTO Nota VALUES
+(5, 85, 3, 3);
+INSERT INTO Nota VALUES
+(6, 89, 5, 4);
+
+--------------------------------------------------------
+-- 7. BIBLIOTECA / LIBRO / PRESTAMO_LIBRO / PLAN_CURSO
+--------------------------------------------------------
+INSERT INTO Biblioteca (id_biblioteca, id_estudiante, nombre, id_facultad) VALUES
+(1, NULL, 'Biblioteca Central', 1);
+INSERT INTO Biblioteca VALUES
+(2, 3, 'Biblioteca Psicología', 2);
+
+INSERT INTO Libro (id_libro, titulo, autor, id_biblioteca) VALUES
+(1, 'Fundamentos de Bases de Datos', 'Elmasri & Navathe', 1);
+INSERT INTO Libro VALUES
+(2, 'Redes de Computadoras', 'Tanenbaum', 1);
+INSERT INTO Libro VALUES
+(3, 'Introducción a la Psicología', 'Atkinson', 2);
+INSERT INTO Libro VALUES
+(4, 'Diseño Gráfico Digital', 'P. Williams', 1);
+
+INSERT INTO PrestamoLibro (id_prestamo, id_estudiante, id_libro,
+                           fecha_prestamo, fecha_devolucion, estado)
+VALUES (1, 1, 1, DATE '2025-03-01', DATE '2025-03-15', 'Devuelto');
+
+INSERT INTO PrestamoLibro VALUES
+(2, 2, 2, DATE '2025-03-05', NULL, 'Prestado');
+INSERT INTO PrestamoLibro VALUES
+(3, 3, 3, DATE '2025-03-10', NULL, 'Prestado');
+INSERT INTO PrestamoLibro VALUES
+(4, 5, 4, DATE '2025-03-12', DATE '2025-03-25', 'Devuelto');
+
+INSERT INTO Plan_Curso (id_plan_curso, tipo, id_curso) VALUES
+(1, 'Obligatorio', 1);
+INSERT INTO Plan_Curso VALUES
+(2, 'Obligatorio', 2);
+INSERT INTO Plan_Curso VALUES
+(3, 'Obligatorio', 4);
+INSERT INTO Plan_Curso VALUES
+(4, 'Electivo', 6);
+
+
+
+select * from estudiante
+
+--vistas 
+
+
+CREATE OR REPLACE VIEW vw_estudiantes_detalle AS
+SELECT  e.id_estudiante,
+        e.nombre,
+        e.apellido,
+        e.fechaIngreso,
+        u.nombreUsuario,
+        u.correo,
+        c.id_carrera,
+        c.nombre       AS nombre_carrera,
+        f.id_facultad,
+        f.nombre       AS nombre_facultad,
+        f.descripcion  AS descripcion_facultad
+FROM    Estudiante e
+        JOIN Usuario  u ON e.id_usuario  = u.id_usuario
+        JOIN Carrera  c ON e.id_carrera  = c.id_carrera
+        JOIN Facultad f ON c.id_facultad = f.id_facultad;
+
+
+CREATE OR REPLACE VIEW vw_grupos_detalle AS
+SELECT  g.id_grupo,
+        g.numeroGrupo,
+        g.fecha                 AS fecha_grupo,
+        cu.id_curso,
+        cu.nombreCurso,
+        cu.creditos,
+        p.id_profesor,
+        p.especialidad,
+        p.grado_academico,
+        pe.id_periodo,
+        pe.anio,
+        pe.cuatrimestre,
+        h.dia_semana,
+        h.hora_inicio,
+        h.hora_fin,
+        a.id_aula,
+        a.numero_aula,
+        a.capacidad,
+        a.modalidad,
+        e.id_edificio,
+        e.nombre      AS nombre_edificio,
+        e.sede,
+        e.ubicacion
+FROM    Grupo     g
+        JOIN Curso     cu ON g.id_curso   = cu.id_curso
+        JOIN Profesor  p  ON g.id_profesor = p.id_profesor
+        JOIN Periodo   pe ON g.id_periodo = pe.id_periodo
+        JOIN Horario   h  ON g.id_horario = h.id_horario
+        JOIN Aula      a  ON g.id_aula    = a.id_aula
+        JOIN Edificio  e  ON a.id_edificio = e.id_edificio;
+
+--------------------------------------------------------
+-- 3. Matrículas con detalle de estudiante, curso y periodo
+--------------------------------------------------------
+CREATE OR REPLACE VIEW vw_matriculas_detalle AS
+SELECT  m.id_matricula,
+        m.fecha_matricula,
+        e.id_estudiante,
+        e.nombre        AS nombre_estudiante,
+        e.apellido      AS apellido_estudiante,
+        c.id_curso,
+        c.nombreCurso,
+        g.id_grupo,
+        g.numeroGrupo,
+        pe.id_periodo,
+        pe.anio,
+        pe.cuatrimestre
+FROM    Matricula m
+        JOIN Estudiante e ON m.id_estudiante = e.id_estudiante
+        JOIN Grupo      g ON m.id_grupo      = g.id_grupo
+        JOIN Curso      c ON g.id_curso      = c.id_curso
+        JOIN Periodo    pe ON g.id_periodo   = pe.id_periodo;
+
+--------------------------------------------------------
+-- 4. Notas de estudiantes por grupo y curso
+--------------------------------------------------------
+CREATE OR REPLACE VIEW vw_notas_estudiantes AS
+SELECT  n.id_nota,
+        n.nota_final,
+        e.id_estudiante,
+        e.nombre        AS nombre_estudiante,
+        e.apellido      AS apellido_estudiante,
+        g.id_grupo,
+        g.numeroGrupo,
+        c.id_curso,
+        c.nombreCurso
+FROM    Nota      n
+        JOIN Estudiante e ON n.id_estudiante = e.id_estudiante
+        JOIN Grupo      g ON n.id_grupo      = g.id_grupo
+        JOIN Curso      c ON g.id_curso      = c.id_curso;
+
+--------------------------------------------------------
+-- 5. Pagos de estudiantes con información de beca
+--------------------------------------------------------
+CREATE OR REPLACE VIEW vw_pagos_estudiantes AS
+SELECT  p.id_pago,
+        p.fecha_pago,
+        p.monto_pagado,
+        e.id_estudiante,
+        e.nombre       AS nombre_estudiante,
+        e.apellido     AS apellido_estudiante,
+        b.id_beca,
+        b.tipo         AS tipo_beca,
+        b.porcentaje   AS porcentaje_beca
+FROM    Pago       p
+        JOIN Estudiante e ON p.id_estudiante = e.id_estudiante
+        LEFT JOIN Beca    b ON p.id_beca     = b.id_beca;
+
+--------------------------------------------------------
+-- 6. Préstamos de libros con detalle de estudiante y biblioteca
+--------------------------------------------------------
+CREATE OR REPLACE VIEW vw_prestamos_libros AS
+SELECT  pl.id_prestamo,
+        pl.fecha_prestamo,
+        pl.fecha_devolucion,
+        pl.estado           AS estado_prestamo,
+        e.id_estudiante,
+        e.nombre            AS nombre_estudiante,
+        e.apellido          AS apellido_estudiante,
+        l.id_libro,
+        l.titulo,
+        l.autor,
+        b.id_biblioteca,
+        b.nombre            AS nombre_biblioteca,
+        f.id_facultad,
+        f.nombre            AS nombre_facultad
+FROM    PrestamoLibro pl
+        JOIN Estudiante e ON pl.id_estudiante = e.id_estudiante
+        JOIN Libro      l ON pl.id_libro      = l.id_libro
+        JOIN Biblioteca b ON l.id_biblioteca  = b.id_biblioteca
+        JOIN Facultad   f ON b.id_facultad    = f.id_facultad;
+        
+
+
