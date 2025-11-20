@@ -698,5 +698,172 @@ FROM    PrestamoLibro pl
         JOIN Biblioteca b ON l.id_biblioteca  = b.id_biblioteca
         JOIN Facultad   f ON b.id_facultad    = f.id_facultad;
         
+        
+CREATE OR REPLACE PROCEDURE sp_cambiar_carrera_estudiante (
+    p_id_estudiante   IN Estudiante.id_estudiante%TYPE,
+    p_id_carrera_nueva IN Estudiante.id_carrera%TYPE
+) AS
+BEGIN
+    UPDATE Estudiante
+    SET    id_carrera = p_id_carrera_nueva
+    WHERE  id_estudiante = p_id_estudiante;
+END;
+/
+
+---------------------------------------------------------
+-- 2. Actualizar el correo de un usuario
+---------------------------------------------------------
+CREATE OR REPLACE PROCEDURE sp_actualizar_correo_usuario (
+    p_id_usuario    IN Usuario.id_usuario%TYPE,
+    p_nuevo_correo  IN Usuario.correo%TYPE
+) AS
+BEGIN
+    UPDATE Usuario
+    SET    correo = p_nuevo_correo
+    WHERE  id_usuario = p_id_usuario;
+END;
+/
+
+
+---------------------------------------------------------
+-- 3. Registrar o actualizar nota de un estudiante en un grupo
+---------------------------------------------------------
+CREATE OR REPLACE PROCEDURE sp_registrar_nota_estudiante (
+    p_id_nota       IN Nota.id_nota%TYPE,
+    p_id_estudiante IN Nota.id_estudiante%TYPE,
+    p_id_grupo      IN Nota.id_grupo%TYPE,
+    p_nota_final    IN Nota.nota_final%TYPE
+) AS
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*)
+    INTO   v_count
+    FROM   Nota
+    WHERE  id_estudiante = p_id_estudiante
+    AND    id_grupo      = p_id_grupo;
+
+    IF v_count > 0 THEN
+        UPDATE Nota
+        SET    nota_final = p_nota_final
+        WHERE  id_estudiante = p_id_estudiante
+        AND    id_grupo      = p_id_grupo;
+    ELSE
+        INSERT INTO Nota (id_nota, id_estudiante, id_grupo, nota_final)
+        VALUES (p_id_nota, p_id_estudiante, p_id_grupo, p_nota_final);
+    END IF;
+END;
+/
+
+---------------------------------------------------------
+-- 4. Registrar pago aplicando beca (descuento)
+---------------------------------------------------------
+CREATE OR REPLACE PROCEDURE sp_registrar_pago_con_beca (
+    p_id_pago       IN Pago.id_pago%TYPE,
+    p_id_estudiante IN Pago.id_estudiante%TYPE,
+    p_id_beca       IN Beca.id_beca%TYPE,
+    p_fecha_pago    IN Pago.fecha_pago%TYPE,
+    p_monto_base    IN Pago.monto_pagado%TYPE
+) AS
+    v_porcentaje   Beca.porcentaje%TYPE;
+    v_monto_final  Pago.monto_pagado%TYPE;
+BEGIN
+    SELECT porcentaje
+    INTO   v_porcentaje
+    FROM   Beca
+    WHERE  id_beca = p_id_beca;
+
+    v_monto_final := p_monto_base - (p_monto_base * (v_porcentaje / 100));
+
+    INSERT INTO Pago (id_pago, id_estudiante, id_beca, fecha_pago, monto_pagado)
+    VALUES (p_id_pago, p_id_estudiante, p_id_beca, p_fecha_pago, v_monto_final);
+END;
+/
+
+
+---------------------------------------------------------
+-- 5. Registrar préstamo de libro
+
+---------------------------------------------------------
+CREATE OR REPLACE PROCEDURE sp_registrar_prestamo_libro (
+    p_id_prestamo     IN PrestamoLibro.id_prestamo%TYPE,
+    p_id_estudiante   IN PrestamoLibro.id_estudiante%TYPE,
+    p_id_libro        IN PrestamoLibro.id_libro%TYPE,
+    p_fecha_prestamo  IN PrestamoLibro.fecha_prestamo%TYPE
+) AS
+BEGIN
+    INSERT INTO PrestamoLibro (
+        id_prestamo,
+        id_estudiante,
+        id_libro,
+        fecha_prestamo,
+        fecha_devolucion,
+        estado
+    ) VALUES (
+        p_id_prestamo,
+        p_id_estudiante,
+        p_id_libro,
+        p_fecha_prestamo,
+        NULL,
+        'PRESTADO'
+    );
+END;
+/
+---------------------------------------------------------
+-- 6. Registrar devolución de libro
+---------------------------------------------------------
+CREATE OR REPLACE PROCEDURE sp_registrar_devolucion_libro (
+    p_id_prestamo        IN PrestamoLibro.id_prestamo%TYPE,
+    p_fecha_devolucion   IN PrestamoLibro.fecha_devolucion%TYPE
+) AS
+BEGIN
+    UPDATE PrestamoLibro
+    SET    fecha_devolucion = p_fecha_devolucion,
+           estado           = 'DEVUELTO'
+    WHERE  id_prestamo      = p_id_prestamo;
+END;
+/
+---------------------------------------------------------
+-- 7. Reasignar estudiante de un grupo a otro
+---------------------------------------------------------
+CREATE OR REPLACE PROCEDURE sp_reasignar_grupo_estudiante (
+    p_id_estudiante    IN Matricula.id_estudiante%TYPE,
+    p_id_grupo_actual  IN Matricula.id_grupo%TYPE,
+    p_id_grupo_nuevo   IN Matricula.id_grupo%TYPE
+) AS
+BEGIN
+    UPDATE Matricula
+    SET    id_grupo = p_id_grupo_nuevo
+    WHERE  id_estudiante = p_id_estudiante
+    AND    id_grupo      = p_id_grupo_actual;
+END;
+/
+
+---------------------------------------------------------
+-- 8. Incrementar capacidad de un aula
+---------------------------------------------------------
+CREATE OR REPLACE PROCEDURE sp_incrementar_capacidad_aula (
+    p_id_aula      IN Aula.id_aula%TYPE,
+    p_incremento   IN NUMBER
+) AS
+BEGIN
+    UPDATE Aula
+    SET    capacidad = capacidad + p_incremento
+    WHERE  id_aula   = p_id_aula;
+END;
+/
+
+---------------------------------------------------------
+-- 9. Cambiar horario de un grupo
+---------------------------------------------------------
+CREATE OR REPLACE PROCEDURE sp_cambiar_horario_grupo (
+    p_id_grupo     IN Grupo.id_grupo%TYPE,
+    p_id_horario_n IN Grupo.id_horario%TYPE
+) AS
+BEGIN
+    UPDATE Grupo
+    SET    id_horario = p_id_horario_n
+    WHERE  id_grupo   = p_id_grupo;
+END;
+/
 
 
