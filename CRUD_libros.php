@@ -30,43 +30,48 @@ die("Falló oci_execute: " . $e['message']);
 
 <?php
 
+//
+
+
+
+
+
+
 // --- AGREGAR LIBRO ---
 $mensaje = "";
 
 if (isset($_POST['agregar'])) {
 
-    $titulo    = trim($_POST['titulo'] ?? "");
-    $autor     = trim($_POST['autor'] ?? "");
-    $categoria = trim($_POST['categoria'] ?? "");
-    $anio      = (int)($_POST['anio'] ?? 0);
-    $estado    = trim($_POST['estado'] ?? "Disponible");
+    $titulo    = trim($_POST['titulo']);
+    $autor     = trim($_POST['autor']);
+    $categoria = trim($_POST['categoria']);
+    $anio      = (int)$_POST['anio'];
+    $estado    = $_POST['estado'];
 
-    if ($titulo === "" || $autor === "" || $categoria === "" || $anio <= 0) {
-        $mensaje = "⚠️ Llená todos los campos.";
-    } else {
+    if ($titulo && $autor && $categoria && $anio > 0) {
 
-        $sqlInsert = "INSERT INTO libros (titulo, autor, categoria, anio, estado)
-                    VALUES (:titulo, :autor, :categoria, :anio, :estado)";
+        $sql = "BEGIN sp_agregar_libro(
+                    :titulo,
+                    :autor,
+                    :categoria,
+                    :anio,
+                    :estado
+                ); END;";
 
-        $stmtInsert = oci_parse($conn, $sqlInsert);
+        $stmt = oci_parse($conn, $sql);
 
-        oci_bind_by_name($stmtInsert, ":titulo", $titulo);
-        oci_bind_by_name($stmtInsert, ":autor", $autor);
-        oci_bind_by_name($stmtInsert, ":categoria", $categoria);
-        oci_bind_by_name($stmtInsert, ":anio", $anio);
-        oci_bind_by_name($stmtInsert, ":estado", $estado);
+        oci_bind_by_name($stmt, ":titulo", $titulo);
+        oci_bind_by_name($stmt, ":autor", $autor);
+        oci_bind_by_name($stmt, ":categoria", $categoria);
+        oci_bind_by_name($stmt, ":anio", $anio);
+        oci_bind_by_name($stmt, ":estado", $estado);
 
-        $ok = oci_execute($stmtInsert, OCI_COMMIT_ON_SUCCESS);
-
-        if ($ok) {
-            header("Location: biblioteca_admin.php"); // refresca lista
-            exit;
-        } else {
-            $e = oci_error($stmtInsert);
-            $mensaje = " Error al agregar: " . $e['message'];
-        }
+        oci_execute($stmt, OCI_COMMIT_ON_SUCCESS);
+        header("Location: biblioteca_admin.php");
+        exit;
     }
 }
+
 ?>
 
 
@@ -74,50 +79,54 @@ if (isset($_POST['agregar'])) {
 // --- EDITAR LIBRO ---
 if (isset($_POST['actualizar'])) {
 
-    $id        = (int)($_POST['id_libro'] ?? 0);
-    $titulo    = trim($_POST['titulo'] ?? "");
-    $autor     = trim($_POST['autor'] ?? "");
-    $categoria = trim($_POST['categoria'] ?? "");
-    $anio      = (int)($_POST['anio'] ?? 0);
-    $estado    = trim($_POST['estado'] ?? "Disponible");
+    $id        = (int)$_POST['id_libro'];
+    $titulo    = trim($_POST['titulo']);
+    $autor     = trim($_POST['autor']);
+    $categoria = trim($_POST['categoria']);
+    $anio      = (int)$_POST['anio'];
+    $estado    = $_POST['estado'];
 
-    if ($id > 0 && $titulo !== "" && $autor !== "" && $categoria !== "" && $anio > 0) {
+    if ($id > 0 && $titulo && $autor && $categoria && $anio > 0) {
 
-        $sqlUpdate = "UPDATE libros
-                SET titulo = :titulo,
-                    autor = :autor,
-                    categoria = :categoria,
-                    anio = :anio,
-                    estado = :estado
-                WHERE id_libro = :id";
+        $sql = "BEGIN sp_actualizar_libro(
+                    :id,
+                    :titulo,
+                    :autor,
+                    :categoria,
+                    :anio,
+                    :estado
+                ); END;";
 
-                    
-        $stmtUpdate = oci_parse($conn, $sqlUpdate);
+        $stmt = oci_parse($conn, $sql);
 
-        oci_bind_by_name($stmtUpdate, ":titulo", $titulo);
-        oci_bind_by_name($stmtUpdate, ":autor", $autor);
-        oci_bind_by_name($stmtUpdate, ":categoria", $categoria);
-        oci_bind_by_name($stmtUpdate, ":anio", $anio);
-        oci_bind_by_name($stmtUpdate, ":estado", $estado);
-        oci_bind_by_name($stmtUpdate, ":id", $id);
+        oci_bind_by_name($stmt, ":id", $id);
+        oci_bind_by_name($stmt, ":titulo", $titulo);
+        oci_bind_by_name($stmt, ":autor", $autor);
+        oci_bind_by_name($stmt, ":categoria", $categoria);
+        oci_bind_by_name($stmt, ":anio", $anio);
+        oci_bind_by_name($stmt, ":estado", $estado);
 
-        oci_execute($stmtUpdate, OCI_COMMIT_ON_SUCCESS);
+        oci_execute($stmt, OCI_COMMIT_ON_SUCCESS);
         header("Location: biblioteca_admin.php");
         exit;
     }
 }
 
 
+
 /* ================== ELIMINAR LIBRO ================== */
 if (isset($_POST['eliminar'])) {
-    $id = (int)($_POST['id_libro'] ?? 0);
+
+    $id = (int)$_POST['id_libro'];
 
     if ($id > 0) {
-        $sqlDelete = "DELETE FROM libros WHERE id_libro = :id";
-        $stmtDelete = oci_parse($conn, $sqlDelete);
-        oci_bind_by_name($stmtDelete, ":id", $id);
-        oci_execute($stmtDelete, OCI_COMMIT_ON_SUCCESS);
 
+        $sql = "BEGIN sp_eliminar_libro(:id); END;";
+        $stmt = oci_parse($conn, $sql);
+
+        oci_bind_by_name($stmt, ":id", $id);
+
+        oci_execute($stmt, OCI_COMMIT_ON_SUCCESS);
         header("Location: biblioteca_admin.php");
         exit;
     }
